@@ -906,7 +906,7 @@
     }
   </style>
   <!-- Google One Tap -->
-  <script src="https://accounts.google.com/gsi/client" async></script>
+  <script src="https://accounts.google.com/gsi/client"></script>
   <!-- Supabase JS (solo para el cliente auth helper) -->
 </head>
 <body>
@@ -1106,30 +1106,6 @@
     function clearToken(){ localStorage.removeItem('sb_token'); }
 
     // Callback global que llama Google One Tap
-    window.handleSignInWithGoogle = async (response) => {
-      try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=id_token`, {
-          method: 'POST',
-          headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: 'google', id_token: response.credential })
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error_description || data.error);
-        setToken(data.access_token);
-        usuarioActual = {
-          id:           data.user.id,
-          email:        data.user.email,
-          nombre:       data.user.user_metadata?.full_name || data.user.email,
-          avatar:       data.user.user_metadata?.avatar_url || '',
-          access_token: data.access_token
-        };
-        await upsertPerfil();
-        mostrarUILogueado();
-        await cargarPeliculas();
-      } catch (err) {
-        mostrarNotificacion('❌ Error al iniciar sesión: ' + err.message, false);
-      }
-    };
 
     async function upsertPerfil() {
       if (!usuarioActual) return;
@@ -2105,6 +2081,31 @@
 
   <script>
     // ── INIT ─────────────────────────────────────────────
+    window.handleSignInWithGoogle = async (response) => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=id_token`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'google', id_token: response.credential })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error_description || data.error);
+        setToken(data.access_token);
+        usuarioActual = {
+          id:           data.user.id,
+          email:        data.user.email,
+          nombre:       data.user.user_metadata?.full_name || data.user.email,
+          avatar:       data.user.user_metadata?.avatar_url || '',
+          access_token: data.access_token
+        };
+        await upsertPerfil();
+        mostrarUILogueado();
+        await cargarPeliculas();
+      } catch (err) {
+        mostrarNotificacion('❌ Error al iniciar sesión: ' + err.message, false);
+      }
+    };
+
     document.addEventListener('DOMContentLoaded', async () => {
     (async () => {
       const token = getToken();
