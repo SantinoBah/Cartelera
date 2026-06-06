@@ -863,9 +863,93 @@
       font-size: 0.68rem; color: var(--muted);
       margin-left: 0.4rem;
     }
+
+    /* ─── USER CHIP (header) ─────────────────────────── */
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.25rem 0.6rem 0.25rem 0.3rem;
+      cursor: pointer;
+      transition: border-color var(--tr);
+    }
+    .user-chip:hover { border-color: var(--gold-dim); }
+
+    /* ─── AMIGOS QUE VIERON ──────────────────────────── */
+    .amigos-vieron {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 0.6rem;
+      font-size: 0.78rem;
+    }
+    .amigos-label { color: var(--muted); }
+    .amigo-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(255,200,60,0.08);
+      border: 1px solid rgba(255,200,60,0.18);
+      border-radius: 12px;
+      padding: 0.15rem 0.5rem 0.15rem 0.25rem;
+      color: var(--text);
+      font-size: 0.75rem;
+    }
+    .amigo-chip img {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
   </style>
+  <!-- Google One Tap -->
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <!-- Supabase JS (solo para el cliente auth helper) -->
 </head>
 <body>
+
+  <!-- LOGIN OVERLAY -->
+  <div id="login-overlay" style="display:flex;position:fixed;inset:0;z-index:1000;background:#0b0b0f;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:3px;color:#f5c518;">CINECLUB</div>
+    <p style="color:#888;font-size:0.9rem;margin:0;">Iniciá sesión para acceder a tu catálogo</p>
+    <!-- Google One Tap trigger -->
+    <div id="g_id_onload"
+      data-client_id="602819021239-lq94i9uu9pfej7a96f8die6cgkuucdd2.apps.googleusercontent.com"
+      data-context="signin"
+      data-ux_mode="popup"
+      data-callback="handleSignInWithGoogle"
+      data-auto_select="true"
+      data-itp_support="true"
+      data-use_fedcm_for_prompt="true">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-shape="pill"
+      data-theme="filled_black"
+      data-text="signin_with"
+      data-size="large"
+      data-logo_alignment="left">
+    </div>
+  </div>
+
+  <!-- MODAL IMPORTAR JSON -->
+  <div id="modal-importar" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;width:min(500px,90vw);display:flex;flex-direction:column;gap:1rem;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--gold);letter-spacing:2px;">IMPORTAR CATÁLOGO</div>
+      <p style="color:var(--muted);font-size:0.82rem;margin:0;">Pegá el JSON de tu catálogo anterior (de JSONBin u otro origen). Debe ser un array de objetos.</p>
+      <textarea id="import-json-input" rows="8" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:monospace;font-size:0.75rem;padding:0.6rem;resize:vertical;outline:none;" placeholder='[{"id":"abc","name":"Inception",...}]'></textarea>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn-primary" style="flex:1;" onclick="importarDesdeJSON(document.getElementById('import-json-input').value)">Importar</button>
+        <button class="btn-secondary" onclick="document.getElementById('modal-importar').style.display='none'">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP (oculto hasta login) -->
+  <div id="app-container" style="display:none;">
 
   <!-- HEADER -->
   <header>
@@ -875,10 +959,16 @@
     </div>
     <div class="header-right">
       <button class="btn-random-header" onclick="peliculaAleatoria()">🎲 ¿Qué miro hoy?</button>
+      <button class="btn-random-header" onclick="document.getElementById('modal-importar').style.display='flex'" title="Importar catálogo">⬆ Importar</button>
       <div class="header-search">
         <span class="search-icon">🔍</span>
         <input type="text" id="search-input" placeholder="Buscar película..." autocomplete="off" />
         <div id="search-suggestions" class="suggestions-container"></div>
+      </div>
+      <div class="user-chip" onclick="cerrarSesion()" title="Cerrar sesión">
+        <img id="user-avatar" src="" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;" />
+        <span id="user-nombre" style="font-size:0.78rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <span style="color:var(--muted);font-size:0.7rem;">✕</span>
       </div>
     </div>
   </header>
@@ -972,57 +1062,230 @@
     const TMDB_API_KEY    = '8e21dd703e7130cc62b5cf2edad806fa';
     const TENOR_API_KEY   = 'AIzaSyBMX5wwWOWfL5EKrK2CbLeEJyJnyLI8gyQ';
 
-    // ── JSONBIN CONFIG ───────────────────────────────────
-    const JSONBIN_BIN_ID  = '6a1c3a61ddf5aa59f77bce0d';
-    const JSONBIN_API_KEY = '$2a$10$G/Q75u8yFUEo46b/40J8netTl1UK18wlAKBjgI/FZm5CHFMF.35G2';
-    const JSONBIN_URL     = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+    // ── SUPABASE CONFIG ─────────────────────────────────
+    const SUPABASE_URL = 'https://xvptomvtpijlwnhozcnj.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2cHRvbXZ0cGlqbHduaG96Y25qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2NzAsImV4cCI6MjA5NjMzNzY3MH0.FudMyaPkK5HH1ymYI2j9q6Yue9nMFPnTXXVILVTOEqs';
 
-    // Lee el array completo desde JSONBin
-    async function dbLeer() {
-      const res  = await fetch(JSONBIN_URL + '/latest', {
-        headers: { 'X-Master-Key': JSONBIN_API_KEY }
+    const sbFetch = (path, opts = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...opts,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': opts.prefer || '',
+        ...(usuarioActual ? { 'Authorization': `Bearer ${usuarioActual.access_token}` } : { 'Authorization': `Bearer ${SUPABASE_KEY}` }),
+        ...(opts.headers || {})
+      }
+    });
+
+    // ── AUTH STATE ───────────────────────────────────────
+    let usuarioActual = null; // { id, email, nombre, avatar, access_token }
+
+    async function obtenerSesion() {
+      const res  = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${getToken()}` }
       });
+      if (!res.ok) return null;
       const data = await res.json();
-      // Filtramos el [0] inicial si todavía está
-      const arr  = Array.isArray(data.record) ? data.record : [];
-      return arr.filter(x => x && typeof x === 'object' && x.id);
+      return data?.id ? data : null;
     }
 
-    // Sobreescribe el array completo en JSONBin
-    async function dbGuardar(arr) {
-      const res = await fetch(JSONBIN_URL, {
-        method:  'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
-        body:    JSON.stringify(arr)
+    function getToken()  { return localStorage.getItem('sb_token') || ''; }
+    function setToken(t) { localStorage.setItem('sb_token', t); }
+    function clearToken(){ localStorage.removeItem('sb_token'); }
+
+    // Callback global que llama Google One Tap
+    window.handleSignInWithGoogle = async (response) => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=id_token`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'google', id_token: response.credential })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error_description || data.error);
+        setToken(data.access_token);
+        usuarioActual = {
+          id:           data.user.id,
+          email:        data.user.email,
+          nombre:       data.user.user_metadata?.full_name || data.user.email,
+          avatar:       data.user.user_metadata?.avatar_url || '',
+          access_token: data.access_token
+        };
+        await upsertPerfil();
+        mostrarUILogueado();
+        await cargarPeliculas();
+      } catch (err) {
+        mostrarNotificacion('❌ Error al iniciar sesión: ' + err.message, false);
+      }
+    };
+
+    async function upsertPerfil() {
+      if (!usuarioActual) return;
+      await sbFetch('perfiles', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: JSON.stringify({ user_id: usuarioActual.id, nombre: usuarioActual.nombre, avatar: usuarioActual.avatar })
       });
-      if (!res.ok) throw new Error('Error guardando en JSONBin');
-      return res.json();
     }
 
-    // Genera un ID único simple
+    async function cerrarSesion() {
+      clearToken();
+      usuarioActual = null;
+      peliculasData = [];
+      mostrarUIDeslogueado();
+    }
+
+    function mostrarUILogueado() {
+      document.getElementById('login-overlay').style.display = 'none';
+      document.getElementById('app-container').style.display = '';
+      const av = document.getElementById('user-avatar');
+      const nm = document.getElementById('user-nombre');
+      if (av) av.src = usuarioActual.avatar || '';
+      if (nm) nm.textContent = usuarioActual.nombre || usuarioActual.email;
+    }
+
+    function mostrarUIDeslogueado() {
+      document.getElementById('login-overlay').style.display = 'flex';
+      document.getElementById('app-container').style.display = 'none';
+      peliculasData = [];
+      if (detallePeliculas) detallePeliculas.innerHTML = '';
+    }
+
+    // ── DB: CATÁLOGO (por usuario) ───────────────────────
+    async function dbLeer() {
+      const res  = await sbFetch(`catalogo?user_id=eq.${usuarioActual.id}&order=created_at.asc`);
+      const rows = await res.json();
+      return Array.isArray(rows) ? rows.map(r => r.data) : [];
+    }
+
+    async function dbGuardar(arr) {
+      // Diff: delete all then re-insert is costly; instead we sync individually
+      // But for simplicity (small catalogs) we do a full replace:
+      // 1) delete existing rows for this user
+      await sbFetch(`catalogo?user_id=eq.${usuarioActual.id}`, { method: 'DELETE' });
+      // 2) insert all
+      if (!arr.length) return;
+      const rows = arr.map(item => ({ id: item.id, user_id: usuarioActual.id, data: item }));
+      await sbFetch('catalogo', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: JSON.stringify(rows)
+      });
+    }
+
+    async function dbAgregarItem(item) {
+      await sbFetch('catalogo', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: JSON.stringify({ id: item.id, user_id: usuarioActual.id, data: item })
+      });
+    }
+
+    async function dbEliminarItem(id) {
+      await sbFetch(`catalogo?id=eq.${id}&user_id=eq.${usuarioActual.id}`, { method: 'DELETE' });
+    }
+
+    async function dbActualizarItem(item) {
+      await sbFetch(`catalogo?id=eq.${item.id}&user_id=eq.${usuarioActual.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ data: item })
+      });
+    }
+
     function generarID() {
       return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     }
 
-    const listaPeliculas   = document.getElementById('peliculas-lista');
-    const detallePeliculas = document.getElementById('pelicula-detalle');
-
-    let peliculasData       = [];
-    let tipoEntrada         = 'movie'; // 'movie' | 'tv'
-    let fuse;
-    let gifIndiceActual     = 0;
-    let entradaSeleccionada = null;
-    let peliculaRandomActual = null;
-
-    // Vistas se guardan en localStorage por ID de película
-    function getVistas() {
-      try { return JSON.parse(localStorage.getItem('vistas') || '{}'); } catch { return {}; }
+    // ── VISTAS (en Supabase, públicas) ──────────────────
+    async function getVistasUsuario() {
+      if (!usuarioActual) return {};
+      const res  = await sbFetch(`vistas?user_id=eq.${usuarioActual.id}`);
+      const rows = await res.json();
+      if (!Array.isArray(rows)) return {};
+      const map = {};
+      rows.forEach(r => { map[r.item_id] = { visto: r.visto, ultimo_ep: r.ultimo_ep }; });
+      return map;
     }
-    function setVista(id, valor) {
-      const v = getVistas(); v[id] = valor;
-      localStorage.setItem('vistas', JSON.stringify(v));
+
+    // Cache local de vistas para no pedir a Supabase en cada render
+    let vistasCache = {};
+
+    async function recargarVistasCache() {
+      vistasCache = await getVistasUsuario();
     }
-    function estaVista(id) { return !!getVistas()[id]; }
+
+    function estaVista(id) { return !!vistasCache[id]?.visto; }
+
+    async function setVista(id, valor) {
+      vistasCache[id] = { ...( vistasCache[id] || {}), visto: valor };
+      await sbFetch('vistas', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: JSON.stringify({ user_id: usuarioActual.id, item_id: id, visto: valor })
+      });
+    }
+
+    // ── ÚLTIMO EPISODIO (Supabase) ──────────────────────
+    function getUltimoEp(serieId) {
+      return vistasCache[serieId]?.ultimo_ep || null;
+    }
+
+    async function setUltimoEp(serieId, season, episode, epName) {
+      const ep = { season, episode, epName: epName || '' };
+      vistasCache[serieId] = { ...(vistasCache[serieId] || {}), ultimo_ep: ep };
+      await sbFetch('vistas', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: JSON.stringify({ user_id: usuarioActual.id, item_id: serieId, ultimo_ep: ep })
+      });
+    }
+
+    // ── AMIGOS: ver vistas de otros ──────────────────────
+    async function cargarVistasAmigos() {
+      const [vistasRes, perfilesRes] = await Promise.all([
+        sbFetch('vistas?visto=eq.true&select=user_id,item_id'),
+        sbFetch('perfiles?select=user_id,nombre,avatar')
+      ]);
+      const vistas   = await vistasRes.json();
+      const perfiles = await perfilesRes.json();
+      if (!Array.isArray(vistas) || !Array.isArray(perfiles)) return;
+
+      const perfilMap = {};
+      perfiles.forEach(p => { perfilMap[p.user_id] = p; });
+
+      // Agrupar por item_id, excluir al usuario actual
+      const porItem = {};
+      vistas.forEach(v => {
+        if (v.user_id === usuarioActual?.id) return;
+        if (!porItem[v.item_id]) porItem[v.item_id] = [];
+        const perfil = perfilMap[v.user_id];
+        if (perfil) porItem[v.item_id].push(perfil);
+      });
+      return porItem;
+    }
+
+    // ── IMPORTAR DESDE JSONBIN ───────────────────────────
+    async function importarDesdeJSON(jsonStr) {
+      try {
+        let arr = JSON.parse(jsonStr);
+        if (!Array.isArray(arr)) throw new Error('El JSON debe ser un array');
+        arr = arr.filter(x => x && typeof x === 'object' && x.id);
+        if (!arr.length) throw new Error('No se encontraron items válidos');
+        // Asegurar que todos tengan type
+        arr = arr.map(x => ({ ...x, type: x.type || 'movie' }));
+        const rows = arr.map(item => ({ id: item.id, user_id: usuarioActual.id, data: item }));
+        await sbFetch('catalogo', {
+          method: 'POST',
+          prefer: 'resolution=merge-duplicates',
+          body: JSON.stringify(rows)
+        });
+        mostrarNotificacion(`✅ ${arr.length} items importados`);
+        await cargarPeliculas();
+        document.getElementById('modal-importar').style.display = 'none';
+      } catch (err) {
+        mostrarNotificacion('❌ Error al importar: ' + err.message, false);
+      }
+    }
 
     // ── TOAST ────────────────────────────────────────────
     function mostrarNotificacion(texto, exito = true) {
@@ -1036,7 +1299,7 @@
     // ── CARGAR PELÍCULAS ─────────────────────────────────
     async function cargarPeliculas() {
       try {
-        peliculasData = await dbLeer();
+        [peliculasData] = await Promise.all([dbLeer(), recargarVistasCache()]);
         fuse = new Fuse(peliculasData, { keys: ['name', 'type'], threshold: 0.4 });
         construirFiltrosGenero();
         aplicarFiltros();
@@ -1045,8 +1308,10 @@
             <div class="play-circle"></div>
             <p>Seleccioná una película o serie para ver los detalles</p>
           </div>`;
+        // Cargar badges de amigos
+        amigosVistasCache = await cargarVistasAmigos() || {};
       } catch (err) {
-        detallePeliculas.innerHTML = `<div class="detalle-placeholder"><p>Error cargando películas.</p></div>`;
+        detallePeliculas.innerHTML = `<div class="detalle-placeholder"><p>Error cargando. ¿Estás logueado?</p></div>`;
         console.error(err);
       }
     }
@@ -1231,6 +1496,15 @@
           <div class="video-container">
             <iframe id="iframe-player" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
           </div>
+          ${(() => {
+            const amigos = amigosVistasCache[p.id] || [];
+            return amigos.length ? `<div class="amigos-vieron">
+              <span class="amigos-label">👀 Visto por:</span>
+              ${amigos.map(a => `<span class="amigo-chip" title="${a.nombre}">
+                ${a.avatar ? `<img src="${a.avatar}" />` : ''}${a.nombre.split(' ')[0]}
+              </span>`).join('')}
+            </div>` : '';
+          })()}
           <div class="action-buttons">
             <button class="btn-vista ${vista ? 'marcada' : ''}" id="btn-vista"
               onclick="toggleVista('${p.id}', ${index})">
@@ -1275,9 +1549,9 @@
     }
 
     // ── VISTO / NO VISTO ─────────────────────────────────
-    function toggleVista(id, index) {
+    async function toggleVista(id, index) {
       const nuevoEstado = !estaVista(id);
-      setVista(id, nuevoEstado);
+      await setVista(id, nuevoEstado);
       mostrarNotificacion(nuevoEstado ? '✔ Marcada como vista' : '○ Marcada como pendiente');
       // Refrescar el botón y el badge sin redibujar todo el detalle
       const btn = document.getElementById('btn-vista');
@@ -1376,13 +1650,12 @@
 
     // ── ELIMINAR ─────────────────────────────────────────
     async function eliminarPelicula(id) {
-      if (!confirm('¿Seguro que querés eliminar esta película?')) return;
+      if (!confirm('¿Seguro que querés eliminar esto?')) return;
       try {
-        const actual  = await dbLeer();
-        const nuevo   = actual.filter(p => p.id !== id);
-        await dbGuardar(nuevo);
-        mostrarNotificacion('🗑️ Película eliminada');
+        await dbEliminarItem(id);
+        mostrarNotificacion('🗑️ Eliminado');
         await cargarPeliculas();
+        detallePeliculas.innerHTML = `<div class="detalle-placeholder"><div class="play-circle"></div><p>Seleccioná una película o serie para ver los detalles</p></div>`;
       } catch (err) {
         mostrarNotificacion('❌ Error al eliminar: ' + err.message, false);
       }
@@ -1410,11 +1683,7 @@
       pelicula.gif = gifs[gifIndiceActual];
       const heroBg = document.querySelector('.hero-bg');
       if (heroBg) heroBg.src = pelicula.gif;
-      try {
-        const actual = await dbLeer();
-        const idx    = actual.findIndex(p => p.id === pelicula.id);
-        if (idx !== -1) { actual[idx] = pelicula; await dbGuardar(actual); }
-      } catch { /* silencioso */ }
+      try { await dbActualizarItem(pelicula); } catch { /* silencioso */ }
     }
 
     // ── TRADUCIR ─────────────────────────────────────────
@@ -1609,9 +1878,7 @@
           };
         }
 
-        const actual = await dbLeer();
-        actual.push(data);
-        await dbGuardar(actual);
+        await dbAgregarItem(data);
         mostrarNotificacion(data.type === 'tv' ? '✅ Serie guardada' : '✅ Película guardada');
         entradaInput.value  = '';
         entradaSeleccionada = null;
@@ -1814,7 +2081,35 @@
       if (bar) bar.style.display = 'none';
     }
 
-    cargarPeliculas();
+  </script>
+  </div><!-- /app-container -->
+
+  <script>
+    // ── INIT ─────────────────────────────────────────────
+    (async () => {
+      const token = getToken();
+      if (!token) { mostrarUIDeslogueado(); return; }
+      // Verify token still valid
+      try {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('invalid');
+        const user = await res.json();
+        usuarioActual = {
+          id:           user.id,
+          email:        user.email,
+          nombre:       user.user_metadata?.full_name || user.email,
+          avatar:       user.user_metadata?.avatar_url || '',
+          access_token: token
+        };
+        mostrarUILogueado();
+        await cargarPeliculas();
+      } catch {
+        clearToken();
+        mostrarUIDeslogueado();
+      }
+    })();
   </script>
 </body>
 </html>
