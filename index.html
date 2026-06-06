@@ -913,7 +913,7 @@
 
   <!-- LOGIN OVERLAY -->
   <div id="login-overlay" style="display:flex;position:fixed;inset:0;z-index:1000;background:#0b0b0f;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem;">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:3px;color:#f5c518;">Cine SABA</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:3px;color:#f5c518;">Cartelera SABA</div>
     <p style="color:#888;font-size:0.9rem;margin:0;">Iniciá sesión para acceder a tu catálogo</p>
     <!-- Google One Tap trigger -->
     <div id="g_id_onload"
@@ -1067,7 +1067,7 @@
     let amigosVistasCache   = {};
 
     // DOM refs (disponibles después de DOMContentLoaded)
-    let detallePeliculas, listaContainer, searchInput, searchSugg;
+    let detallePeliculas    = null;
     let episodiosCache      = {};
 
     const OMDB_API_KEY    = 'c7b893ce';
@@ -1126,11 +1126,8 @@
     function mostrarUILogueado() {
       document.getElementById('login-overlay').style.display = 'none';
       document.getElementById('app-container').style.display = '';
-      // Init DOM refs now that app-container is visible
+      // Init detallePeliculas ref now that app-container is visible
       detallePeliculas = document.getElementById('detalle-peliculas');
-      listaContainer   = document.getElementById('lista-container');
-      searchInput      = document.getElementById('search-input');
-      searchSugg       = document.getElementById('search-suggestions');
       const av = document.getElementById('user-avatar');
       const nm = document.getElementById('user-nombre');
       if (av) av.src = usuarioActual.avatar || '';
@@ -1143,8 +1140,8 @@
       if (overlay) overlay.style.display = 'flex';
       if (app)     app.style.display = 'none';
       peliculasData = [];
-      detallePeliculas = detallePeliculas || document.getElementById('detalle-peliculas');
-      if (detallePeliculas) detallePeliculas.innerHTML = '';
+      const det = document.getElementById('detalle-peliculas');
+      if (det) det.innerHTML = '';
     }
 
     // ── DB: CATÁLOGO (por usuario) ───────────────────────
