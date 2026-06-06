@@ -1058,6 +1058,18 @@
   </footer>
 
   <script>
+    // ── VARIABLES GLOBALES ───────────────────────────────
+    let peliculasData       = [];
+    let fuse                = null;
+    let entradaSeleccionada = null;
+    let gifIndiceActual     = 0;
+    let tipoEntrada         = 'movie';
+    let amigosVistasCache   = {};
+
+    // DOM refs (disponibles después de DOMContentLoaded)
+    let detallePeliculas, listaContainer, searchInput, searchSugg;
+    let episodiosCache      = {};
+
     const OMDB_API_KEY    = 'c7b893ce';
     const TMDB_API_KEY    = '8e21dd703e7130cc62b5cf2edad806fa';
     const TENOR_API_KEY   = 'AIzaSyBMX5wwWOWfL5EKrK2CbLeEJyJnyLI8gyQ';
@@ -1138,6 +1150,11 @@
     function mostrarUILogueado() {
       document.getElementById('login-overlay').style.display = 'none';
       document.getElementById('app-container').style.display = '';
+      // Init DOM refs now that app-container is visible
+      detallePeliculas = document.getElementById('detalle-peliculas');
+      listaContainer   = document.getElementById('lista-container');
+      searchInput      = document.getElementById('search-input');
+      searchSugg       = document.getElementById('search-suggestions');
       const av = document.getElementById('user-avatar');
       const nm = document.getElementById('user-nombre');
       if (av) av.src = usuarioActual.avatar || '';
@@ -1145,9 +1162,12 @@
     }
 
     function mostrarUIDeslogueado() {
-      document.getElementById('login-overlay').style.display = 'flex';
-      document.getElementById('app-container').style.display = 'none';
+      const overlay = document.getElementById('login-overlay');
+      const app     = document.getElementById('app-container');
+      if (overlay) overlay.style.display = 'flex';
+      if (app)     app.style.display = 'none';
       peliculasData = [];
+      detallePeliculas = detallePeliculas || document.getElementById('detalle-peliculas');
       if (detallePeliculas) detallePeliculas.innerHTML = '';
     }
 
@@ -1950,7 +1970,6 @@
     }
 
     // ── SELECTOR TEMPORADA/EPISODIO ──────────────────────
-    let episodiosCache = {};
 
     async function cargarTemporadas(serie, imdbID) {
       const seasons = serie.seasons || [];
@@ -2086,6 +2105,7 @@
 
   <script>
     // ── INIT ─────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async () => {
     (async () => {
       const token = getToken();
       if (!token) { mostrarUIDeslogueado(); return; }
@@ -2110,6 +2130,7 @@
         mostrarUIDeslogueado();
       }
     })();
+    }); // DOMContentLoaded
   </script>
 </body>
 </html>
