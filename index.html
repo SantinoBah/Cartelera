@@ -906,7 +906,7 @@
     }
   </style>
   <!-- Google One Tap -->
-  <script src="https://accounts.google.com/gsi/client"></script>
+  <script src="https://accounts.google.com/gsi/client" onload="initGoogleOneTap()" async></script>
   <!-- Supabase JS (solo para el cliente auth helper) -->
 </head>
 <body>
@@ -918,25 +918,6 @@
     <!-- Google One Tap trigger -->
     <div id="g_id_onload"></div>
     <div id="google-btn-container"></div>
-    <script>
-      // Init Google Identity Services with a nonce so tokens always match
-      window._googleNonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
-      function initGoogleOneTap() {
-        if (!window.google) { setTimeout(initGoogleOneTap, 100); return; }
-        google.accounts.id.initialize({
-          client_id: '602819021239-lq94i9uu9pfej7a96f8die6cgkuucdd2.apps.googleusercontent.com',
-          callback: window.handleSignInWithGoogle,
-          nonce: window._googleNonce,
-          use_fedcm_for_prompt: true,
-          auto_select: false,
-        });
-        google.accounts.id.renderButton(
-          document.getElementById('google-btn-container'),
-          { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', logo_alignment: 'left' }
-        );
-      }
-      initGoogleOneTap();
-    </script>
   </div>
 
   <!-- MODAL IMPORTAR JSON -->
@@ -2085,6 +2066,23 @@
 
   <script>
     // ── INIT ─────────────────────────────────────────────
+    // ── GOOGLE ONE TAP INIT ─────────────────────────────
+    window._googleNonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+
+    window.initGoogleOneTap = function() {
+      google.accounts.id.initialize({
+        client_id: '602819021239-lq94i9uu9pfej7a96f8die6cgkuucdd2.apps.googleusercontent.com',
+        callback: window.handleSignInWithGoogle,
+        nonce: window._googleNonce,
+        use_fedcm_for_prompt: true,
+        auto_select: false,
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('google-btn-container'),
+        { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', logo_alignment: 'left' }
+      );
+    };
+
     window.handleSignInWithGoogle = async (response) => {
       try {
         const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=id_token`, {
