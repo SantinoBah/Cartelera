@@ -1068,6 +1068,7 @@
 
     // DOM refs (disponibles después de DOMContentLoaded)
     let detallePeliculas    = null;
+    let listaPeliculas      = null;
     let episodiosCache      = {};
 
     const OMDB_API_KEY    = 'c7b893ce';
@@ -1128,6 +1129,7 @@
       document.getElementById('app-container').style.display = '';
       // Init detallePeliculas ref now that app-container is visible
       detallePeliculas = document.getElementById('pelicula-detalle');
+      listaPeliculas   = document.getElementById('peliculas-lista');
       const av = document.getElementById('user-avatar');
       const nm = document.getElementById('user-nombre');
       if (av) av.src = usuarioActual.avatar || '';
@@ -2098,7 +2100,7 @@
         };
         await upsertPerfil();
         mostrarUILogueado();
-        await cargarPeliculas();
+        await cargarPeliculas(); // listaPeliculas init happens inside mostrarUILogueado
       } catch (err) {
         console.error('Auth error:', err);
         alert('Error al iniciar sesión: ' + err.message);
