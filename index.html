@@ -913,7 +913,7 @@
 
   <!-- LOGIN OVERLAY -->
   <div id="login-overlay" style="display:flex;position:fixed;inset:0;z-index:1000;background:#0b0b0f;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem;">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:3px;color:#f5c518;">Cartelera SABA</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:3px;color:#f5c518;">CINECLUB</div>
     <p style="color:#888;font-size:0.9rem;margin:0;">Iniciá sesión para acceder a tu catálogo</p>
     <!-- Google One Tap trigger -->
     <div id="g_id_onload"
@@ -921,7 +921,7 @@
       data-context="signin"
       data-ux_mode="popup"
       data-callback="handleSignInWithGoogle"
-      data-auto_select="true"
+      data-auto_select="false"
       data-itp_support="true"
       data-use_fedcm_for_prompt="true">
     </div>
@@ -1283,6 +1283,7 @@
     // ── TOAST ────────────────────────────────────────────
     function mostrarNotificacion(texto, exito = true) {
       const toast = document.getElementById('toast');
+      if (!toast) { console.warn('Toast not ready:', texto); return; }
       toast.textContent = texto;
       toast.style.background = exito ? '#2d6e45' : '#7a1a1a';
       toast.classList.add('show');
@@ -2099,7 +2100,8 @@
         mostrarUILogueado();
         await cargarPeliculas();
       } catch (err) {
-        mostrarNotificacion('❌ Error al iniciar sesión: ' + err.message, false);
+        console.error('Auth error:', err);
+        alert('Error al iniciar sesión: ' + err.message);
       }
     };
 
