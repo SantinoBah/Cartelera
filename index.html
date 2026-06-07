@@ -916,23 +916,27 @@
     <div style="font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:3px;color:#f5c518;">CINECLUB</div>
     <p style="color:#888;font-size:0.9rem;margin:0;">Iniciá sesión para acceder a tu catálogo</p>
     <!-- Google One Tap trigger -->
-    <div id="g_id_onload"
-      data-client_id="602819021239-lq94i9uu9pfej7a96f8die6cgkuucdd2.apps.googleusercontent.com"
-      data-context="signin"
-      data-ux_mode="popup"
-      data-callback="handleSignInWithGoogle"
-      data-auto_select="false"
-      data-itp_support="true"
-      data-use_fedcm_for_prompt="true">
-    </div>
-    <div class="g_id_signin"
-      data-type="standard"
-      data-shape="pill"
-      data-theme="filled_black"
-      data-text="signin_with"
-      data-size="large"
-      data-logo_alignment="left">
-    </div>
+    <div id="g_id_onload"></div>
+    <div id="google-btn-container"></div>
+    <script>
+      // Init Google Identity Services with a nonce so tokens always match
+      window._googleNonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+      function initGoogleOneTap() {
+        if (!window.google) { setTimeout(initGoogleOneTap, 100); return; }
+        google.accounts.id.initialize({
+          client_id: '602819021239-lq94i9uu9pfej7a96f8die6cgkuucdd2.apps.googleusercontent.com',
+          callback: window.handleSignInWithGoogle,
+          nonce: window._googleNonce,
+          use_fedcm_for_prompt: true,
+          auto_select: false,
+        });
+        google.accounts.id.renderButton(
+          document.getElementById('google-btn-container'),
+          { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', logo_alignment: 'left' }
+        );
+      }
+      initGoogleOneTap();
+    </script>
   </div>
 
   <!-- MODAL IMPORTAR JSON -->
@@ -2086,7 +2090,7 @@
         const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=id_token`, {
           method: 'POST',
           headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: 'google', id_token: response.credential })
+          body: JSON.stringify({ provider: 'google', id_token: response.credential, nonce: window._googleNonce })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error_description || data.error);
