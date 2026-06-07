@@ -1127,7 +1127,7 @@
       document.getElementById('login-overlay').style.display = 'none';
       document.getElementById('app-container').style.display = '';
       // Init detallePeliculas ref now that app-container is visible
-      detallePeliculas = document.getElementById('detalle-peliculas');
+      detallePeliculas = document.getElementById('pelicula-detalle');
       const av = document.getElementById('user-avatar');
       const nm = document.getElementById('user-nombre');
       if (av) av.src = usuarioActual.avatar || '';
@@ -1140,7 +1140,7 @@
       if (overlay) overlay.style.display = 'flex';
       if (app)     app.style.display = 'none';
       peliculasData = [];
-      const det = document.getElementById('detalle-peliculas');
+      const det = document.getElementById('pelicula-detalle');
       if (det) det.innerHTML = '';
     }
 
