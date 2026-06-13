@@ -40,6 +40,71 @@
       min-height: 100vh;
     }
 
+    /* ─── PANTALLA DE LOGIN ─────────────────────────── */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .login-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2.5rem 2rem;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+    }
+
+    .login-box h2 {
+      font-family: var(--font-head);
+      font-size: 2.2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+
+    .login-box p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .login-box input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 1.1rem;
+      padding: 0.75rem 1rem;
+      outline: none;
+      text-align: center;
+      letter-spacing: 4px;
+      transition: border-color var(--tr), box-shadow var(--tr);
+      margin-bottom: 1rem;
+    }
+
+    .login-box input:focus {
+      border-color: var(--gold-dim);
+      box-shadow: 0 0 0 3px rgba(226,185,106,0.1);
+    }
+
+    #login-error {
+      color: var(--red);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
     /* ─── HEADER ─────────────────────────────────────── */
     header {
       background: var(--surface);
@@ -867,6 +932,17 @@
 </head>
 <body>
 
+  <!-- PANTALLA DE LOGIN -->
+  <div id="login-overlay">
+    <div class="login-box">
+      <h2>Acceso Privado</h2>
+      <p>Ingresá la contraseña para acceder al catálogo</p>
+      <input type="password" id="login-password" placeholder="••••" maxlength="10" />
+      <div id="login-error">Contraseña incorrecta</div>
+      <button class="btn-primary" id="login-btn" style="margin:0;">ENTRAR</button>
+    </div>
+  </div>
+
   <!-- HEADER -->
   <header>
     <div class="header-brand">
@@ -968,6 +1044,41 @@
   </footer>
 
   <script>
+    // ── GESTIÓN DE AUTENTICACIÓN ─────────────────────────
+    const CLAVE_CORRECTA = "9876";
+    const overlayLogin = document.getElementById('login-overlay');
+    const inputPass = document.getElementById('login-password');
+    const errorLogin = document.getElementById('login-error');
+    const btnLogin = document.getElementById('login-btn');
+
+    function verificarSesion() {
+      if (localStorage.getItem('sesion_activa') === 'true') {
+        overlayLogin.style.display = 'none';
+        cargarPeliculas();
+      }
+    }
+
+    function intentarLogin() {
+      if (inputPass.value === CLAVE_CORRECTA) {
+        localStorage.setItem('sesion_activa', 'true');
+        overlayLogin.style.display = 'none';
+        cargarPeliculas();
+      } else {
+        errorLogin.style.display = 'block';
+        inputPass.value = '';
+        inputPass.focus();
+      }
+    }
+
+    btnLogin.addEventListener('click', intentarLogin);
+    inputPass.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') intentarLogin();
+    });
+
+    // Ejecutar control de sesión apenas cargue la página
+    verificarSesion();
+
+
     const OMDB_API_KEY    = 'c7b893ce';
     const TMDB_API_KEY    = '8e21dd703e7130cc62b5cf2edad806fa';
     const TENOR_API_KEY   = 'AIzaSyBMX5wwWOWfL5EKrK2CbLeEJyJnyLI8gyQ';
@@ -1035,6 +1146,8 @@
 
     // ── CARGAR PELÍCULAS ─────────────────────────────────
     async function cargarPeliculas() {
+      // Evitamos llamadas fetch si el usuario no está logueado todavía
+      if (localStorage.getItem('sesion_activa') !== 'true') return;
       try {
         peliculasData = await dbLeer();
         fuse = new Fuse(peliculasData, { keys: ['name', 'type'], threshold: 0.4 });
@@ -1304,8 +1417,6 @@
     function verTrailer(nombre) {
       const query   = encodeURIComponent(nombre + ' trailer oficial');
       const ytSearch = `https://www.youtube.com/results?search_query=${query}`;
-      // Intentamos cargar en el iframe el primer resultado vía embed — usamos YouTube nocookie
-      // Como no tenemos API key de YouTube, abrimos directamente en nueva pestaña
       window.open(ytSearch, '_blank');
     }
 
@@ -1341,8 +1452,6 @@
     });
 
     // ── SERVIDORES ───────────────────────────────────────
-    // imdbID  → vidsrc, embed69, xupalace
-    // tmdbID  → autoembed, 2embed, multiembed, embedsu, vidlink
     function cargarServidor(servidor, id, btn, season, episode) {
       document.querySelectorAll('.iframe-btn').forEach(b => b.classList.remove('active'));
       if (btn) { btn.classList.add('active'); btn.dataset.servidor = servidor; }
@@ -1502,7 +1611,6 @@
             });
           } else { entradaSugg.style.display = 'none'; }
         } else {
-          // Búsqueda de series vía TMDB
           const resultados = await buscarTMDBSeries(q);
           if (resultados.length) {
             entradaSugg.style.display = 'block';
@@ -1551,7 +1659,6 @@
         if (tipoEntrada === 'movie') {
           const omdb = entradaSeleccionada || await buscarOMDbPorTitulo(titulo);
           const gif  = await buscarGIF(omdb.Title);
-          // Obtener tmdbID desde TMDB para reproductores que lo requieren
           let tmdbIDPelicula = '';
           try {
             const tr = await fetch(`https://api.themoviedb.org/3/find/${omdb.imdbID}?api_key=${TMDB_API_KEY}&external_source=imdb_id`);
@@ -1578,7 +1685,6 @@
             tmdbID:      tmdbIDPelicula
           };
         } else {
-          // Serie vía TMDB
           let tmdb = entradaSeleccionada;
           if (!tmdb) {
             const res = await buscarTMDBSeries(titulo);
@@ -1631,7 +1737,6 @@
     }
 
     // ── BUSCADOR DE EPISODIOS ────────────────────────────
-    // Construye un índice plano de todos los episodios de la serie (usando caché ya cargada)
     async function buscarEnEpisodios(query, serie) {
       const q = query.toLowerCase();
       const results = [];
@@ -1699,7 +1804,6 @@
         .map(s => `<option value="${s.season_number}">Temporada ${s.season_number} (${s.episode_count} ep.)</option>`)
         .join('');
 
-      // Restaurar último episodio visto si existe
       const ult = getUltimoEp(serie.id);
       if (ult) {
         const optT = selT.querySelector(`option[value="${ult.season}"]`);
@@ -1726,7 +1830,6 @@
         const e = parseInt(selE.value);
         const epNombre = selE.options[selE.selectedIndex]?.text || '';
         if (info) info.textContent = `Temporada ${s}, Episodio ${e}`;
-        // Refrescar iframe si hay uno activo
         const iframe    = document.getElementById('iframe-player');
         const activeBtn = document.querySelector('.iframe-btn.active');
         if (iframe && activeBtn) {
@@ -1734,17 +1837,14 @@
           const useId = ['vidsrc'].includes(servidor) ? imdbID : (serie.tmdbID ? String(serie.tmdbID) : imdbID);
           cargarServidor(servidor, useId, activeBtn, s, e);
         }
-        // Actualizar botón "marcar episodio"
         const btnMark = document.getElementById('btn-marcar-ep');
         if (btnMark) btnMark.dataset.season = s, btnMark.dataset.episode = e, btnMark.dataset.name = epNombre;
-        // Actualizar barra último visto
         renderUltimoVisto(serie);
       }
 
       selT.onchange = () => actualizarEpisodios();
       selE.onchange = actualizarInfo;
 
-      // ── Buscador de episodios ──
       if (epSearchInput) {
         let searchTimeout;
         epSearchInput.addEventListener('input', () => {
@@ -1803,7 +1903,6 @@
       const selT = document.getElementById('sel-temporada');
       const selE = document.getElementById('sel-episodio');
       if (selT) selT.value = ult.season;
-      // Re-cargar episodios de esa temporada y saltar al episodio
       const serie = peliculasData.find(p => p.id === serieId);
       if (serie) await cargarTemporadas(serie, serie.imdbID || '');
     }
@@ -1813,8 +1912,6 @@
       const bar = document.getElementById('ultimo-visto-bar');
       if (bar) bar.style.display = 'none';
     }
-
-    cargarPeliculas();
   </script>
 </body>
 </html>
