@@ -932,7 +932,6 @@
 </head>
 <body>
 
-  <!-- PANTALLA DE LOGIN -->
   <div id="login-overlay">
     <div class="login-box">
       <h2>Acceso Privado</h2>
@@ -943,7 +942,6 @@
     </div>
   </div>
 
-  <!-- HEADER -->
   <header>
     <div class="header-brand">
       <div class="logo-icon"></div>
@@ -959,10 +957,8 @@
     </div>
   </header>
 
-  <!-- TOAST -->
   <div id="toast"></div>
 
-  <!-- MODAL ¿Qué miro hoy? -->
   <div class="modal-overlay" id="modal-random">
     <div class="modal">
       <img class="modal-poster" id="modal-poster" src="" alt="" />
@@ -976,12 +972,10 @@
     </div>
   </div>
 
-  <!-- LAYOUT -->
   <div class="layout">
 
     <aside class="panel-left">
 
-      <!-- Agregar película / serie -->
       <div class="form-card">
         <div class="card-title" id="form-titulo">＋ AGREGAR PELÍCULA</div>
         <div class="type-toggle">
@@ -995,14 +989,11 @@
         <button class="btn-primary" id="guardarPeliculaBtn">BUSCAR Y GUARDAR</button>
       </div>
 
-      <!-- Lista -->
       <div class="lista-card">
         <div class="card-title" style="margin-bottom:0.6rem;">CATÁLOGO</div>
 
-        <!-- Contador -->
         <div class="lista-counter" id="lista-counter"></div>
 
-        <!-- Controles orden + filtro vista -->
         <div class="lista-controles">
           <select class="ctrl-select" id="orden-select" onchange="aplicarFiltros()">
             <option value="default">Orden original</option>
@@ -1019,10 +1010,8 @@
           </select>
         </div>
 
-        <!-- Filtros de género -->
         <div class="genre-filters" id="genre-filters"></div>
 
-        <!-- Grid de miniaturas -->
         <div id="peliculas-lista"></div>
       </div>
 
@@ -1044,41 +1033,6 @@
   </footer>
 
   <script>
-    // ── GESTIÓN DE AUTENTICACIÓN ─────────────────────────
-    const CLAVE_CORRECTA = "9876";
-    const overlayLogin = document.getElementById('login-overlay');
-    const inputPass = document.getElementById('login-password');
-    const errorLogin = document.getElementById('login-error');
-    const btnLogin = document.getElementById('login-btn');
-
-    function verificarSesion() {
-      if (localStorage.getItem('sesion_activa') === 'true') {
-        overlayLogin.style.display = 'none';
-        cargarPeliculas();
-      }
-    }
-
-    function intentarLogin() {
-      if (inputPass.value === CLAVE_CORRECTA) {
-        localStorage.setItem('sesion_activa', 'true');
-        overlayLogin.style.display = 'none';
-        cargarPeliculas();
-      } else {
-        errorLogin.style.display = 'block';
-        inputPass.value = '';
-        inputPass.focus();
-      }
-    }
-
-    btnLogin.addEventListener('click', intentarLogin);
-    inputPass.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') intentarLogin();
-    });
-
-    // Ejecutar control de sesión apenas cargue la página
-    verificarSesion();
-
-
     const OMDB_API_KEY    = 'c7b893ce';
     const TMDB_API_KEY    = '8e21dd703e7130cc62b5cf2edad806fa';
     const TENOR_API_KEY   = 'AIzaSyBMX5wwWOWfL5EKrK2CbLeEJyJnyLI8gyQ';
@@ -1094,7 +1048,6 @@
         headers: { 'X-Master-Key': JSONBIN_API_KEY }
       });
       const data = await res.json();
-      // Filtramos el [0] inicial si todavía está
       const arr  = Array.isArray(data.record) ? data.record : [];
       return arr.filter(x => x && typeof x === 'object' && x.id);
     }
@@ -1146,7 +1099,6 @@
 
     // ── CARGAR PELÍCULAS ─────────────────────────────────
     async function cargarPeliculas() {
-      // Evitamos llamadas fetch si el usuario no está logueado todavía
       if (localStorage.getItem('sesion_activa') !== 'true') return;
       try {
         peliculasData = await dbLeer();
@@ -1203,16 +1155,13 @@
 
       let lista = [...peliculasData];
 
-      // Filtro género
       if (generoActivo !== 'todos') {
         lista = lista.filter(p => p.genre && p.genre.split(',').map(g => g.trim()).includes(generoActivo));
       }
 
-      // Filtro vistas/pendientes
       if (vistaFlt === 'vistas')     lista = lista.filter(p => estaVista(p.id));
       if (vistaFlt === 'pendientes') lista = lista.filter(p => !estaVista(p.id));
 
-      // Ordenar
       if (orden === 'nombre')       lista.sort((a,b) => a.name.localeCompare(b.name));
       if (orden === 'nombre-desc')  lista.sort((a,b) => b.name.localeCompare(a.name));
       if (orden === 'rating')       lista.sort((a,b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
@@ -1229,7 +1178,7 @@
       return m ? parseInt(m[0]) : 0;
     }
 
-    // ── CONTADOR ─────────────────────────────────────────
+    // ─── CONTADOR ─────────────────────────────────────────
     function actualizarContador() {
       const total     = peliculasData.length;
       const vistas    = peliculasData.filter(p => estaVista(p.id)).length;
@@ -1363,8 +1312,6 @@
       }
     }
 
-    // Wrapper que lee season/episode actuales si están presentes
-    // Para series: servidores basados en TMDB usan tmdbID, vidsrc usa imdbID
     function reproducir(servidor, id, btn) {
       const selT = document.getElementById('sel-temporada');
       const selE = document.getElementById('sel-episodio');
@@ -1392,13 +1339,11 @@
       const nuevoEstado = !estaVista(id);
       setVista(id, nuevoEstado);
       mostrarNotificacion(nuevoEstado ? '✔ Marcada como vista' : '○ Marcada como pendiente');
-      // Refrescar el botón y el badge sin redibujar todo el detalle
       const btn = document.getElementById('btn-vista');
       if (btn) {
         btn.textContent = nuevoEstado ? '✔ Marcar como no vista' : '○ Marcar como vista';
         btn.classList.toggle('marcada', nuevoEstado);
       }
-      // Actualizar badge en título
       const badgeDetalle = document.querySelector('.vista-detalle-badge');
       const titleArea = document.querySelector('.detalle-title-area');
       if (nuevoEstado && titleArea && !badgeDetalle) {
@@ -1409,7 +1354,6 @@
       } else if (!nuevoEstado && badgeDetalle) {
         badgeDetalle.remove();
       }
-      // Actualizar lista
       aplicarFiltros();
     }
 
@@ -1446,7 +1390,6 @@
       if (peliculaRandomActual !== null) mostrarDetalle(peliculaRandomActual);
     }
 
-    // Cerrar modal clickando afuera
     document.getElementById('modal-random').addEventListener('click', function(e) {
       if (e.target === this) cerrarModal();
     });
@@ -1552,7 +1495,7 @@
       const badges = document.querySelectorAll('.badge:not(.gold)');
       for (const badge of badges) badge.textContent = await traducirTexto(badge.textContent);
 
-      btn.textContent = '✅ Traducido';
+      btn.textContent = '¼ Traducido';
     }
 
     // ── BUSCADOR HEADER ──────────────────────────────────
@@ -1726,7 +1669,6 @@
         mostrarNotificacion('❌ ' + err.message, false);
       }
     });
-
 
     // ── ÚLTIMO EPISODIO VISTO ────────────────────────────
     function getUltimoEp(serieId) {
@@ -1912,6 +1854,41 @@
       const bar = document.getElementById('ultimo-visto-bar');
       if (bar) bar.style.display = 'none';
     }
+
+
+    // ── GESTIÓN DE AUTENTICACIÓN (MOVIDO AL FINAL) ─────────
+    const CLAVE_CORRECTA = "9876";
+    const overlayLogin = document.getElementById('login-overlay');
+    const inputPass = document.getElementById('login-password');
+    const errorLogin = document.getElementById('login-error');
+    const btnLogin = document.getElementById('login-btn');
+
+    function verificarSesion() {
+      if (localStorage.getItem('sesion_activa') === 'true') {
+        overlayLogin.style.display = 'none';
+        cargarPeliculas();
+      }
+    }
+
+    function intentarLogin() {
+      if (inputPass.value === CLAVE_CORRECTA) {
+        localStorage.setItem('sesion_activa', 'true');
+        overlayLogin.style.display = 'none';
+        cargarPeliculas();
+      } else {
+        errorLogin.style.display = 'block';
+        inputPass.value = '';
+        inputPass.focus();
+      }
+    }
+
+    btnLogin.addEventListener('click', intentarLogin);
+    inputPass.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') intentarLogin();
+    });
+
+    // Controlar la sesión al terminar de cargar el script completo
+    verificarSesion();
   </script>
 </body>
 </html>
